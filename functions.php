@@ -1,0 +1,166 @@
+<?php
+/*
+Plugin Name: Kavkaz Ten Star Rating (JSON Meta Version)
+Description: Film siteleri için 10 tam yıldızlı, JSON meta yapılı, AJAX kayıtlı ve Google Schema.org uyumlu rating sistemi.
+Version: 2.0
+Author: Kavkaz
+*/
+
+if (!defined('ABSPATH')) exit;
+
+class Kavkaz_Ten_Star_Rating_JSON {
+    public function __construct() {
+        add_shortcode('ten_star_rating', [$this, 'render_rating']);
+        add_action('wp_ajax_tsr_save_rating', [$this, 'save_rating']);
+        add_action('wp_ajax_nopriv_tsr_save_rating', [$this, 'save_rating']);
+    }
+
+    private function user_id_or_ip() {
+        return is_user_logged_in() ? 'user_' . get_current_user_id() : 'ip_' . $_SERVER['REMOTE_ADDR'];
+    }
+
+    public function render_rating($atts) {
+        global $post;
+
+        $post_id = $post->ID;
+        $rating_data = get_post_meta($post_id, 'tsr_rating_data', true);
+        $rating_data = $rating_data ? json_decode($rating_data, true) : ['total'=>0,'count'=>0,'users'=>[]];
+
+        $user_key = $this->user_id_or_ip();
+        $last_rating = isset($rating_data['users'][$user_key]) ? $rating_data['users'][$user_key] : 0;
+
+        $average_rating = $rating_data['count'] > 0 ? $rating_data['total'] / $rating_data['count'] : 9.0;
+        $average_rating = max(1, min(10, $average_rating));
+        $rating_count_for_schema = $rating_data['count'] > 0 ? $rating_data['count'] : 1;
+
+        $image = get_the_post_thumbnail_url($post_id, 'full');
+        $url = get_permalink($post_id);
+        $display_count = $rating_data['count'] > 0 ? $rating_data['count'] + 1 : 1;
+
+        ob_start();
+        ?>
+        <div class="tsr-container" data-post="<?php echo esc_attr($post_id); ?>" data-selected="<?php echo $last_rating; ?>">
+            <div class="tsr-stars">
+                <?php
+                for ($i = 1; $i <= 10; $i++) {
+                    $class = ($last_rating && $i <= $last_rating) ? 'full' : (($last_rating==0 && $i <= floor($average_rating)) ? 'full' : '');
+                    echo '<span class="tsr-star ' . $class . '" data-value="' . $i . '">★</span>';
+                }
+                ?>
+            </div>
+            <div class="tsr-info">
+                Ortalama: <?php echo number_format($average_rating, 1); ?> / 10
+                (<?php echo $display_count; ?> oy)
+            </div>
+        </div>
+
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org/",
+            "@type": "AggregateRating",
+            "itemReviewed": {
+                "@type": "Movie",
+                "name": "<?php echo esc_js(get_the_title($post_id)); ?>",
+                "image": "<?php echo esc_url($image); ?>",
+                "url": "<?php echo esc_url($url); ?>"
+            },
+            "ratingValue": "<?php echo number_format($average_rating, 1); ?>",
+            "ratingCount": "<?php echo $rating_count_for_schema; ?>",
+            "bestRating": "10",
+            "worstRating": "1"
+        }
+        </script>
+
+        <style>
+        .tsr-star {
+            font-size: 28px;
+            color: #c7c7c7;
+            cursor: pointer;
+            display: inline-block;
+            transition: color 0.2s ease;
+        }
+        .tsr-star.full { color: #f5a623; }
+        .tsr-star:hover { color: #ff0000; }
+        .tsr-info { margin-top:5px; font-size:14px; }
+        </style>
+
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script>
+        jQuery(document).ready(function($) {
+            $('.tsr-star').on('mouseenter', function(){
+                var val = $(this).data('value');
+                $(this).parent().find('.tsr-star').each(function(){
+                    $(this).css('color', $(this).data('value') <= val ? '#ff0000' : '#c7c7c7');
+                });
+            }).on('mouseleave', function(){
+                var container = $(this).closest('.tsr-container');
+                var selected = container.data('selected') || 0;
+                container.find('.tsr-star').each(function(){
+                    $(this).css('color', $(this).data('value') <= selected ? '#f5a623' : '#c7c7c7');
+                });
+            });
+
+            $('.tsr-star').on('click', function(){
+                var value = $(this).data('value');
+                var container = $(this).closest('.tsr-container');
+                var post_id = container.data('post');
+
+                $.post('<?php echo admin_url("admin-ajax.php"); ?>', {
+                    action: 'tsr_save_rating',
+                    post_id: post_id,
+                    rating: value
+                }, function(response){
+                    if(response.success){
+                        var avg = parseFloat(response.data.avg);
+                        var count = response.data.count;
+                        container.data('selected', value);
+
+                        container.find('.tsr-star').each(function(){
+                            $(this).css('color', $(this).data('value') <= value ? '#f5a623' : '#c7c7c7');
+                        });
+
+                        var displayCount = count + 1;
+                        container.find('.tsr-info').html("Ortalama: " + avg.toFixed(1) + " / 10 (" + displayCount + " oy)");
+                    } else {
+                        alert(response.data.message);
+                    }
+                });
+            });
+        });
+        </script>
+        <?php
+        return ob_get_clean();
+    }
+
+    public function save_rating() {
+        $post_id = intval($_POST['post_id']);
+        $rating = floatval($_POST['rating']);
+        $user_key = $this->user_id_or_ip();
+
+        $rating_data = get_post_meta($post_id, 'tsr_rating_data', true);
+        $rating_data = $rating_data ? json_decode($rating_data, true) : ['total'=>0,'count'=>0,'users'=>[]];
+
+        if(isset($rating_data['users'][$user_key])){
+            wp_send_json_error(['message'=>'Sadece bir kez oy verebilirsiniz.']);
+        }
+
+        if($rating < 1 || $rating > 10){
+            wp_send_json_error(['message'=>'Geçersiz oy değeri']);
+        }
+
+        $rating_data['total'] += $rating;
+        $rating_data['count'] += 1;
+        $rating_data['users'][$user_key] = $rating;
+
+        update_post_meta($post_id, 'tsr_rating_data', json_encode($rating_data));
+
+        $average_rating = max(1, min(10, $rating_data['total'] / $rating_data['count']));
+
+        wp_send_json_success([
+            'avg' => $average_rating,
+            'count' => $rating_data['count']
+        ]);
+    }
+}
+
+new Kavkaz_Ten_Star_Rating_JSON();
