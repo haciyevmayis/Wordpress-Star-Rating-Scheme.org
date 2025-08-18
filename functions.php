@@ -1,12 +1,4 @@
 <?php
-/*
-Plugin Name: Kavkaz Ten Star Rating (JSON Meta Version)
-Description: Film siteleri için 10 tam yıldızlı, JSON meta yapılı, AJAX kayıtlı ve Google Schema.org uyumlu rating sistemi.
-Version: 2.0
-Author: Kavkaz
-*/
-
-if (!defined('ABSPATH')) exit;
 
 class Kavkaz_Ten_Star_Rating_JSON {
     public function __construct() {
