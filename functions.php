@@ -1,5 +1,8 @@
 <?php
 
+/*-----------------------------------------------------------------------------------*/
+# Kavkaz Ten Star Rating - SVG version with admin default
+/*-----------------------------------------------------------------------------------*/
 class Kavkaz_Ten_Star_Rating_JSON {
     public function __construct() {
         add_shortcode('ten_star_rating', [$this, 'render_rating']);
@@ -19,15 +22,18 @@ class Kavkaz_Ten_Star_Rating_JSON {
         global $post;
         $post_id = $post->ID;
 
-        $rating_data = get_post_meta($post_id, 'tsr_rating_data', true);
         $imdb_data   = get_post_meta($post_id, 'imdb', true) ?: 9.0;
+        $rating_data = get_post_meta($post_id, 'tsr_rating_data', true);
         $rating_data = $rating_data ? json_decode($rating_data, true) : ['total'=>0,'count'=>0,'users'=>[]];
 
-        $average_rating = $rating_data['count'] > 0 ? $rating_data['total'] / $rating_data['count'] : $imdb_data;
+        $total_votes = $rating_data['count'];      
+        $total_score = $rating_data['total'];      
+
+        // Ortalama = adminin başlangıç oy + kullanıcı toplam oyları / (1 + kullanıcı oy sayısı)
+        $average_rating = ($imdb_data + $total_score) / ($total_votes + 1);
         $average_rating = max(1, min(10, $average_rating));
 
-        $rating_count_for_schema = $rating_data['count'] > 0 ? $rating_data['count'] : 1;
-
+        $rating_count_for_schema = $total_votes + 1; // admin oyunu dahil
         $image = get_the_post_thumbnail_url($post_id, 'full') ?: '';
         $url   = get_permalink($post_id);
 
@@ -56,17 +62,20 @@ class Kavkaz_Ten_Star_Rating_JSON {
         global $post;
         $post_id = $post->ID;
 
-        $rating_data = get_post_meta($post_id, 'tsr_rating_data', true);
         $imdb_data   = get_post_meta($post_id, 'imdb', true) ?: 9.0;
+        $rating_data = get_post_meta($post_id, 'tsr_rating_data', true);
         $rating_data = $rating_data ? json_decode($rating_data, true) : ['total'=>0,'count'=>0,'users'=>[]];
 
         $user_key    = $this->user_id_or_ip();
         $last_rating = isset($rating_data['users'][$user_key]) ? $rating_data['users'][$user_key] : 0;
 
-        $average_rating = $rating_data['count'] > 0 ? $rating_data['total'] / $rating_data['count'] : $imdb_data;
+        $total_votes = $rating_data['count'];
+        $total_score = $rating_data['total'];
+
+        $average_rating = ($imdb_data + $total_score) / ($total_votes + 1);
         $average_rating = max(1, min(10, $average_rating));
 
-        $display_count = $rating_data['count'] > 0 ? $rating_data['count'] + 1 : 1;
+        $display_count = $total_votes + 1;
 
         ob_start();
         ?>
@@ -121,7 +130,7 @@ class Kavkaz_Ten_Star_Rating_JSON {
                             $(this).attr('fill', $(this).parent().data('value') <= value ? '#f5a623' : '#c7c7c7');
                         });
 
-                        var displayCount = count + 1;
+                        var displayCount = count + 1; // admin oyunu dahil
                         container.find('.tsr-info').html("Ortalama: " + avg.toFixed(1) + " / 10 (" + displayCount + " oy)");
                     } else {
                         alert(response.data.message);
@@ -157,7 +166,9 @@ class Kavkaz_Ten_Star_Rating_JSON {
 
         update_post_meta($post_id, 'tsr_rating_data', json_encode($rating_data));
 
-        $average_rating = max(1, min(10, $rating_data['total'] / $rating_data['count']));
+        $imdb_data = get_post_meta($post_id, 'imdb', true) ?: 9.0;
+        $average_rating = ($imdb_data + $rating_data['total']) / ($rating_data['count'] + 1);
+        $average_rating = max(1, min(10, $average_rating));
 
         wp_send_json_success([
             'avg'   => $average_rating,
@@ -167,4 +178,3 @@ class Kavkaz_Ten_Star_Rating_JSON {
 }
 
 new Kavkaz_Ten_Star_Rating_JSON();
-
