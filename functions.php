@@ -45,12 +45,21 @@ class Kavkaz_Ten_Star_Rating_JSON {
 		  "name": "<?php echo esc_js(get_the_title($post_id)); ?>",
 		  "image": "<?php echo esc_url($image); ?>",
 		  "url": "<?php echo esc_url($url); ?>",
+		  "description": "<?php echo esc_js(get_the_excerpt($post_id)); ?>",
 		  "aggregateRating": {
 			"@type": "AggregateRating",
 			"ratingValue": "<?php echo number_format($average_rating, 1); ?>",
 			"ratingCount": "<?php echo $rating_count_for_schema; ?>",
 			"bestRating": "10",
 			"worstRating": "1"
+		  },
+		  "publisher": {
+			"@type": "Organization",
+			"name": "LoveFilm İzle",
+			"logo": {
+			  "@type": "ImageObject",
+			  "url": "<?php echo esc_url(kavkaz_get_option( 'logo' )); ?>"
+			}
 		  }
 		}
 		</script>
