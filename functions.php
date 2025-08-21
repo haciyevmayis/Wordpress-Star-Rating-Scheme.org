@@ -16,55 +16,55 @@ class Kavkaz_Ten_Star_Rating_JSON {
     }
 
     // Head içine JSON-LD ekle
-    public function output_schema_json() {
-        if ( ! is_singular('post') ) return;
+	public function output_schema_json() {
+		if ( ! is_singular('post') ) return;
 
-        global $post;
-        $post_id = $post->ID;
+		global $post;
+		$post_id = $post->ID;
 
-        $imdb_data   = get_post_meta($post_id, 'imdb', true) ?: 9.0;
-        $rating_data = get_post_meta($post_id, 'tsr_rating_data', true);
-        $rating_data = $rating_data ? json_decode($rating_data, true) : ['total'=>0,'count'=>0,'users'=>[]];
+		$imdb_data   = get_post_meta($post_id, 'imdb', true) ?: 9.0;
+		$rating_data = get_post_meta($post_id, 'tsr_rating_data', true);
+		$rating_data = $rating_data ? json_decode($rating_data, true) : ['total'=>0,'count'=>0,'users'=>[]];
 
-        $total_votes = $rating_data['count'];      
-        $total_score = $rating_data['total'];      
+		$total_votes = $rating_data['count'];      
+		$total_score = $rating_data['total'];      
 
-        // Ortalama = adminin başlangıç oy + kullanıcı toplam oyları / (1 + kullanıcı oy sayısı)
-        $average_rating = ($imdb_data + $total_score) / ($total_votes + 1);
-        $average_rating = max(1, min(10, $average_rating));
+		// Ortalama = adminin başlangıç oy + kullanıcı toplam oyları / (1 + kullanıcı oy sayısı)
+		$average_rating = ($imdb_data + $total_score) / ($total_votes + 1);
+		$average_rating = max(1, min(10, $average_rating));
 
-        $rating_count_for_schema = $total_votes + 1; // admin oyunu dahil
-        $image = get_the_post_thumbnail_url($post_id, 'full') ?: '';
-        $url   = get_permalink($post_id);
+		$rating_count_for_schema = $total_votes + 1; // admin oyunu dahil
+		$image = get_the_post_thumbnail_url($post_id, 'full') ?: '';
+		$url   = get_permalink($post_id);
 
-        ?>
-		<script type="application/ld+json">
-		{
-		  "@context": "https://schema.org",
-		  "@type": "Movie",
-		  "name": "<?php echo esc_js(get_the_title($post_id)); ?>",
-		  "image": "<?php echo esc_url($image); ?>",
-		  "url": "<?php echo esc_url($url); ?>",
-		  "description": "<?php echo esc_js(get_the_excerpt($post_id)); ?>",
-		  "aggregateRating": {
-			"@type": "AggregateRating",
-			"ratingValue": "<?php echo number_format($average_rating, 1); ?>",
-			"ratingCount": "<?php echo $rating_count_for_schema; ?>",
-			"bestRating": "10",
-			"worstRating": "1"
-		  },
-		  "publisher": {
-			"@type": "Organization",
-			"name": "LoveFilm İzle",
-			"logo": {
-			  "@type": "ImageObject",
-			  "url": "<?php echo esc_url(kavkaz_get_option( 'logo' )); ?>"
-			}
-		  }
-		}
-		</script>
-        <?php
-    }
+		// JSON verisini dizi olarak hazırla
+		$data = [
+			"@context" => "https://schema.org",
+			"@type"    => "Movie",
+			"name"     => get_the_title($post_id),
+			"image"    => $image,
+			"url"      => $url,
+			"description" => get_the_excerpt($post_id),
+			"aggregateRating" => [
+				"@type" => "AggregateRating",
+				"ratingValue" => number_format($average_rating, 1),
+				"ratingCount" => intval($rating_count_for_schema),
+				"bestRating"  => "10",
+				"worstRating" => "1"
+			],
+			"publisher" => [
+				"@type" => "Organization",
+				"name"  => "Film izle",
+				"logo"  => [
+					"@type" => "ImageObject",
+					"url"   => esc_url(kavkaz_get_option('logo'))
+				]
+			]
+		];
+
+		// JSON-LD çıktısı, tüm karakterler güvenli şekilde encode ediliyor
+		echo '<script type="application/ld+json">' . wp_json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . '</script>';
+	}
 
     // Shortcode render
     public function render_rating($atts) {
