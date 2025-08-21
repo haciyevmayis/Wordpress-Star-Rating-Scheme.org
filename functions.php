@@ -38,22 +38,22 @@ class Kavkaz_Ten_Star_Rating_JSON {
         $url   = get_permalink($post_id);
 
         ?>
-        <script type="application/ld+json">
-        {
-            "@context": "https://schema.org/",
-            "@type": "AggregateRating",
-            "itemReviewed": {
-                "@type": "Movie",
-                "name": "<?php echo esc_js(get_the_title($post_id)); ?>",
-                "image": "<?php echo esc_url($image); ?>",
-                "url": "<?php echo esc_url($url); ?>"
-            },
-            "ratingValue": "<?php echo number_format($average_rating, 1); ?>",
-            "ratingCount": "<?php echo $rating_count_for_schema; ?>",
-            "bestRating": "10",
-            "worstRating": "1"
-        }
-        </script>
+		<script type="application/ld+json">
+		{
+		  "@context": "https://schema.org",
+		  "@type": "Movie",
+		  "name": "<?php echo esc_js(get_the_title($post_id)); ?>",
+		  "image": "<?php echo esc_url($image); ?>",
+		  "url": "<?php echo esc_url($url); ?>",
+		  "aggregateRating": {
+			"@type": "AggregateRating",
+			"ratingValue": "<?php echo number_format($average_rating, 1); ?>",
+			"ratingCount": "<?php echo $rating_count_for_schema; ?>",
+			"bestRating": "10",
+			"worstRating": "1"
+		  }
+		}
+		</script>
         <?php
     }
 
