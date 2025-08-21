@@ -1,0 +1,1 @@
+.tsr-star,.tsr-star:hover~.tsr-star{color:#c7c7c7}.tsr-star{font-size:28px;cursor:pointer;display:inline-block;transition:color .2s}@media(max-width:767px){.tsr-star{font-size:20px}}.tsr-star.full{color:#f5a623}.tsr-star:hover{color:red}.tsr-info{margin-top:5px;font-size:14px;background:#000;padding:15px}.tsr-container { position: relative; margin-top: 1em; }
