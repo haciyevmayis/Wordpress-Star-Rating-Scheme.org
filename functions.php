@@ -1,5 +1,3 @@
-<?php
-
 /*-----------------------------------------------------------------------------------*/
 # Kavkaz Ten Star Rating - SVG version with admin default
 /*-----------------------------------------------------------------------------------*/
@@ -22,12 +20,12 @@ class Kavkaz_Ten_Star_Rating_JSON {
 		global $post;
 		$post_id = $post->ID;
 
-		$imdb_data   = get_post_meta($post_id, 'imdb', true) ?: 9.0;
+		$imdb_data   = floatval(get_post_meta($post_id, 'imdb', true) ?: 9.0);
 		$rating_data = get_post_meta($post_id, 'tsr_rating_data', true);
 		$rating_data = $rating_data ? json_decode($rating_data, true) : ['total'=>0,'count'=>0,'users'=>[]];
 
-		$total_votes = $rating_data['count'];      
-		$total_score = $rating_data['total'];      
+		$total_votes = is_numeric($rating_data['count']) ? $rating_data['count'] : 0;
+		$total_score = is_numeric($rating_data['total']) ? $rating_data['total'] : 0;
 
 		// Ortalama = adminin başlangıç oy + kullanıcı toplam oyları / (1 + kullanıcı oy sayısı)
 		$average_rating = ($imdb_data + $total_score) / ($total_votes + 1);
@@ -36,12 +34,16 @@ class Kavkaz_Ten_Star_Rating_JSON {
 		$rating_count_for_schema = $total_votes + 1; // admin oyunu dahil
 		$image = get_the_post_thumbnail_url($post_id, 'full') ?: '';
 		$url   = get_permalink($post_id);
-
+		$replace = array('full ', 'Full ', 'hd ', 'HD ', 'vip ', 'ViP ', 'Vip ', '4k ', '4K ', 'kaliteli ', 'Kaliteli ', 'netflix ', 'Netflix ', 'asya ', 'Asya ', 'cizgi ', 'Cizgi ', 'sansürsüz ', 'Sansürsüz ', 'filmini ', 'Filmini ', 'hint ', 'Hint ', '720p ', '720P ', '1080p ', '1080P ', 'dublaj ', 'Dublaj ', 'altyazılı ', 'Altyazılı ', 'türkçe ', 'Türkçe ', 'Dublaj/Altyazılı ', '(Türkçe Altyazılı) ', 'kore ', 'Kore ', 'Dublaj', 'Dublaj Altyazılı Full', 'Dublaj Full', 'Altyazılı Full', ' Türkçe Full', ' Yerli Dizi Full', ' Dizi Full', ' Yerli Dizi', 'yerli ', 'Yerli ', 'Altyazılı', 'Sansürsüz', ' Full');
+		$replace2 = array(' film izle', ' Film izle', ' filmi izle', ' Filmi izle', ' FIlmi izle', ' gençlik izle', ' Gençlik izle', ' yetişkin izle', ' Yetişkin izle');
+		$rep = str_replace($replace, '', get_the_title($post_id));
+		$title = str_replace($replace2, ' izle', $rep);
+			
 		// JSON verisini dizi olarak hazırla
 		$data = [
 			"@context" => "https://schema.org",
 			"@type"    => "Movie",
-			"name"     => get_the_title($post_id),
+			"name"     => $title,
 			"image"    => $image,
 			"url"      => $url,
 			"description" => get_the_excerpt($post_id),
@@ -71,15 +73,15 @@ class Kavkaz_Ten_Star_Rating_JSON {
         global $post;
         $post_id = $post->ID;
 
-        $imdb_data   = get_post_meta($post_id, 'imdb', true) ?: 9.0;
+        $imdb_data   = floatval(get_post_meta($post_id, 'imdb', true) ?: 9.0);
         $rating_data = get_post_meta($post_id, 'tsr_rating_data', true);
         $rating_data = $rating_data ? json_decode($rating_data, true) : ['total'=>0,'count'=>0,'users'=>[]];
 
         $user_key    = $this->user_id_or_ip();
         $last_rating = isset($rating_data['users'][$user_key]) ? $rating_data['users'][$user_key] : 0;
 
-        $total_votes = $rating_data['count'];
-        $total_score = $rating_data['total'];
+		$total_votes = is_numeric($rating_data['count']) ? $rating_data['count'] : 0;
+		$total_score = is_numeric($rating_data['total']) ? $rating_data['total'] : 0;
 
         $average_rating = ($imdb_data + $total_score) / ($total_votes + 1);
         $average_rating = max(1, min(10, $average_rating));
@@ -185,5 +187,4 @@ class Kavkaz_Ten_Star_Rating_JSON {
         ]);
     }
 }
-
 new Kavkaz_Ten_Star_Rating_JSON();
